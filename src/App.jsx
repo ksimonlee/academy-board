@@ -291,18 +291,6 @@ export default function PickupBoardApp() {
           <div className="mt-6 text-center text-zinc-500 text-sm">
             전광판 스타일 학원 하원 관리 시스템 · 푸쉬 알림 지원
           </div>
-
-          <div className="mt-10 bg-zinc-950 border border-zinc-800 rounded-2xl p-5">
-            <h2 className="text-xl font-bold text-yellow-400 mb-3">
-              테스트 예시
-            </h2>
-
-            <ul className="space-y-2 text-zinc-300">
-              <li>09:00 입력 → 10:30 하원</li>
-              <li>13:40 입력 → 15:10 하원</li>
-              <li>23:30 입력 → 01:00 하원</li>
-            </ul>
-          </div>
         </div>
       </div>
     </div>
