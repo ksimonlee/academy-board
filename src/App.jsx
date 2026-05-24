@@ -115,41 +115,57 @@ export default function PickupBoardApp() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-black to-zinc-900 text-white flex justify-center p-4 md:p-6">
       <div className="w-full max-w-6xl">
-        <div className="bg-zinc-900 border border-zinc-700 rounded-3xl shadow-2xl p-6">
-          <h1 className="text-5xl font-extrabold text-center text-yellow-400 tracking-widest mb-3">
-            학원 하원 전광판
-          </h1>
+        <div className="bg-zinc-900/90 backdrop-blur-xl border border-zinc-700 rounded-[32px] shadow-2xl p-4 md:p-6 overflow-hidden">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <div className="text-zinc-500 text-sm uppercase tracking-[0.3em] mb-2">
+                Academy Smart Board
+              </div>
 
-          <p className="text-center text-zinc-400 text-lg mb-8">
-            학생 이름과 등원 시간을 입력하면 자동으로 1시간 30분 후 하원 시간이 표시됩니다.
-          </p>
+              <h1 className="text-3xl md:text-5xl font-extrabold text-yellow-400 tracking-widest">
+                학원 하원 전광판
+              </h1>
+            </div>
 
-          <div className="grid md:grid-cols-4 gap-4 mb-8">
+            <div className="hidden md:flex items-center gap-2 bg-zinc-800 px-4 py-2 rounded-2xl border border-zinc-700">
+              <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
+              <span className="text-green-400 font-semibold">LIVE</span>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-yellow-400/10 to-red-500/10 border border-yellow-500/20 rounded-3xl p-4 mb-6">
+            <p className="text-center text-zinc-300 text-lg md:text-xl leading-relaxed">
+              학생 이름과 등원 시간을 입력하면 자동으로 1시간 30분 후
+              하원 시간이 표시됩니다.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="학생 이름"
-              className="bg-zinc-800 border border-zinc-600 rounded-2xl px-4 py-4 text-lg focus:outline-none focus:border-yellow-400"
+              className="bg-zinc-800/80 border border-zinc-600 rounded-2xl px-4 py-4 text-lg focus:outline-none focus:border-yellow-400 shadow-inner"
             />
 
             <input
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="bg-zinc-800 border border-zinc-600 rounded-2xl px-4 py-4 text-lg focus:outline-none focus:border-yellow-400"
+              className="bg-zinc-800/80 border border-zinc-600 rounded-2xl px-4 py-4 text-lg focus:outline-none focus:border-yellow-400 shadow-inner"
             />
 
             <button
               onClick={addStudent}
               className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-2xl px-4 py-4 text-lg transition-all duration-200"
             >
-              학생 추가
+              ➕ 학생 추가
             </button>
 
-            <div className="bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-4 text-center">
+            <div className="bg-zinc-800/80 border border-zinc-700 rounded-2xl px-4 py-4 text-center shadow-inner">
               <div className="text-sm text-zinc-400 mb-1">현재 시간</div>
               <div className="text-2xl font-bold text-green-400 font-mono">
                 {currentTime}
@@ -157,9 +173,9 @@ export default function PickupBoardApp() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-3xl border border-zinc-700">
+          <div className="overflow-hidden rounded-[28px] border border-zinc-700 shadow-2xl bg-black/40">
             <table className="w-full text-center">
-              <thead className="bg-zinc-800 text-yellow-400">
+              <thead className="bg-gradient-to-r from-zinc-800 to-zinc-900 text-yellow-400">
                 <tr>
                   <th className="py-5 text-xl">학생 이름</th>
                   <th className="py-5 text-xl">등원 시간</th>
@@ -182,17 +198,17 @@ export default function PickupBoardApp() {
                   students.map((student) => (
                     <tr
                       key={student.id}
-                      className="border-t border-zinc-700 bg-black hover:bg-zinc-900 transition-all"
+                      className="border-t border-zinc-800 bg-black/70 hover:bg-zinc-900 transition-all duration-300"
                     >
-                      <td className="py-6 text-3xl font-bold tracking-wide">
+                      <td className="py-6 text-2xl md:text-3xl font-bold tracking-wide">
                         {student.name}
                       </td>
 
-                      <td className="py-6 text-2xl text-cyan-400 font-mono">
+                      <td className="py-6 text-xl md:text-2xl text-cyan-400 font-mono">
                         {student.enterTime}
                       </td>
 
-                      <td className="py-6 text-4xl font-extrabold text-red-500 font-mono animate-pulse">
+                      <td className="py-6 text-3xl md:text-5xl font-extrabold text-red-500 font-mono animate-pulse drop-shadow-[0_0_12px_rgba(239,68,68,0.8)]">
                         {student.leaveTime}
                       </td>
 
@@ -201,7 +217,7 @@ export default function PickupBoardApp() {
                           onClick={() => removeStudent(student.id)}
                           className="bg-red-500 hover:bg-red-400 text-white px-4 py-2 rounded-xl font-semibold transition-all"
                         >
-                          삭제
+                          🗑 삭제
                         </button>
                       </td>
                     </tr>
@@ -211,11 +227,29 @@ export default function PickupBoardApp() {
             </table>
           </div>
 
+          <div className="mt-8 grid grid-cols-3 gap-3">
+            <div className="bg-zinc-800/70 border border-zinc-700 rounded-2xl p-4 text-center">
+              <div className="text-zinc-500 text-sm">등록 학생</div>
+              <div className="text-3xl font-bold text-cyan-400">
+                {students.length}
+              </div>
+            </div>
+
+            <div className="bg-zinc-800/70 border border-zinc-700 rounded-2xl p-4 text-center">
+              <div className="text-zinc-500 text-sm">알림 상태</div>
+              <div className="text-2xl font-bold text-green-400">ON</div>
+            </div>
+
+            <div className="bg-zinc-800/70 border border-zinc-700 rounded-2xl p-4 text-center">
+              <div className="text-zinc-500 text-sm">시스템</div>
+              <div className="text-2xl font-bold text-yellow-400">LIVE</div>
+            </div>
+          </div>
+
           <div className="mt-6 text-center text-zinc-500 text-sm">
             전광판 스타일 학원 하원 관리 시스템 · 푸쉬 알림 지원
           </div>
 
-          {/* 테스트 예시 */}
           <div className="mt-10 bg-zinc-950 border border-zinc-800 rounded-2xl p-5">
             <h2 className="text-xl font-bold text-yellow-400 mb-3">
               테스트 예시
