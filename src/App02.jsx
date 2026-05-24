@@ -1,28 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  onSnapshot,
-  deleteDoc,
-  doc,
-} from "firebase/firestore";
-
-// Firebase 설정
-// 아래 값을 Firebase Console 프로젝트 설정값으로 교체하세요.
-const firebaseConfig = {
-  apiKey: "AIzaSyBFMVNEhppIhryGYnCMHvmkSCqdfXucolY",
-  authDomain: "academy-board-37bb9.firebaseapp.com",
-  projectId: "academy-board-37bb9",
-  storageBucket: "academy-board-37bb9.firebasestorage.app",
-  messagingSenderId: "425499433220",
-  appId: "1:425499433220:web:814cf986e6368257f19851",
-  measurementId: "G-57D1ZG6BYK"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 
 export default function PickupBoardApp() {
   const [name, setName] = useState("");
@@ -32,24 +8,8 @@ export default function PickupBoardApp() {
   const [notifiedStudents, setNotifiedStudents] = useState([]);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "students"), (snapshot) => {
-      const items = snapshot.docs.map((docItem) => ({
-        id: docItem.id,
-        ...docItem.data(),
-      }));
-
-      items.sort((a, b) => b.createdAt - a.createdAt);
-
-      setStudents(items);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
     if (
       typeof Notification !== "undefined" &&
-      Notification.permission !== "granted" !== "undefined" &&
       Notification.permission !== "granted"
     ) {
       Notification.requestPermission();
@@ -93,7 +53,7 @@ export default function PickupBoardApp() {
     return `${hh}:${mm}`;
   };
 
-  const addStudent = async () => {
+  const addStudent = () => {
     if (!name.trim() || !time) {
       alert("학생 이름과 시간을 입력하세요.");
       return;
@@ -101,20 +61,17 @@ export default function PickupBoardApp() {
 
     const leaveTime = calculateLeaveTime(time);
 
-    try {
-      await addDoc(collection(db, "students"), {
-        name: name.trim(),
-        enterTime: time,
-        leaveTime,
-        createdAt: Date.now(),
-      });
+    const newStudent = {
+      id: Date.now(),
+      name: name.trim(),
+      enterTime: time,
+      leaveTime,
+    };
 
-      setName("");
-      setTime("");
-    } catch (error) {
-      console.error(error);
-      alert("Firebase 저장 실패");
-    }
+    setStudents((prev) => [newStudent, ...prev]);
+
+    setName("");
+    setTime("");
   };
 
   useEffect(() => {
@@ -189,13 +146,8 @@ export default function PickupBoardApp() {
     }
   };
 
-  const removeStudent = async (id) => {
-    try {
-      await deleteDoc(doc(db, "students", id));
-    } catch (error) {
-      console.error(error);
-      alert("삭제 실패");
-    }
+  const removeStudent = (id) => {
+    setStudents((prev) => prev.filter((student) => student.id !== id));
   };
 
   return (
@@ -337,7 +289,7 @@ export default function PickupBoardApp() {
           </div>
 
           <div className="mt-6 text-center text-zinc-500 text-sm">
-            Firebase 실시간 공유 학원 하원 관리 시스템 · 푸쉬 알림 지원
+            전광판 스타일 학원 하원 관리 시스템 · 푸쉬 알림 지원
           </div>
         </div>
       </div>
