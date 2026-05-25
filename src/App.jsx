@@ -8,6 +8,7 @@ import {
   onSnapshot,
   deleteDoc,
   doc,
+  updateDoc,
 } from "firebase/firestore";
 
 // Firebase 설정
@@ -117,6 +118,7 @@ export default function PickupBoardApp() {
         name: name.trim(),
         enterTime: time,
         leaveTime: calculateLeaveTime(time),
+        status: "학원중",
         createdAt: Date.now(),
       });
 
@@ -125,6 +127,20 @@ export default function PickupBoardApp() {
     } catch (error) {
       console.error(error);
       alert("학생 저장 실패");
+    }
+  };
+
+  // 학생 상태 변경
+  const updateStudentStatus = async (id, newStatus) => {
+    try {
+      const studentRef = doc(db, "students", id);
+
+      await updateDoc(studentRef, {
+        status: newStatus,
+      });
+    } catch (error) {
+      console.error(error);
+      alert("상태 변경 실패");
     }
   };
 
@@ -249,6 +265,7 @@ export default function PickupBoardApp() {
                   <th className="py-5 text-xl">학생 이름</th>
                   <th className="py-5 text-xl">등원 시간</th>
                   <th className="py-5 text-xl">하원 시간</th>
+                  <th className="py-5 text-xl">상태</th>
 
                   {!isParentMode && (
                     <th className="py-5 text-xl">학부모 QR</th>
@@ -291,6 +308,53 @@ export default function PickupBoardApp() {
 
                         <td className="py-6 text-3xl md:text-5xl text-red-500 font-extrabold font-mono">
                           {student.leaveTime}
+                        </td>
+
+                        <td className="py-6">
+                          <div className="flex flex-col items-center gap-2">
+                            <div
+                              className={`px-4 py-2 rounded-2xl font-bold text-white text-sm md:text-base ${
+                                student.status === "학원중"
+                                  ? "bg-blue-500"
+                                  : student.status === "차량탑승"
+                                  ? "bg-yellow-500 text-black"
+                                  : "bg-green-600"
+                              }`}
+                            >
+                              {student.status || "학원중"}
+                            </div>
+
+                            {!isParentMode && (
+                              <div className="flex flex-wrap justify-center gap-2 mt-2">
+                                <button
+                                  onClick={() =>
+                                    updateStudentStatus(student.id, "학원중")
+                                  }
+                                  className="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded-lg text-xs font-bold"
+                                >
+                                  학원중
+                                </button>
+
+                                <button
+                                  onClick={() =>
+                                    updateStudentStatus(student.id, "차량탑승")
+                                  }
+                                  className="bg-yellow-500 hover:bg-yellow-400 text-black px-3 py-1 rounded-lg text-xs font-bold"
+                                >
+                                  차량탑승
+                                </button>
+
+                                <button
+                                  onClick={() =>
+                                    updateStudentStatus(student.id, "귀가완료")
+                                  }
+                                  className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded-lg text-xs font-bold"
+                                >
+                                  귀가완료
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </td>
 
                         {!isParentMode && (
