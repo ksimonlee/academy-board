@@ -31,6 +31,20 @@ export default function PickupBoardApp() {
   const [currentTime, setCurrentTime] = useState("");
   const [notifiedStudents, setNotifiedStudents] = useState([]);
 
+  // URL 기반 화면 모드
+  const params = new URLSearchParams(window.location.search);
+  const studentName = params.get("student");
+
+  // 학부모 모드 여부
+  const isParentMode = !!studentName;
+
+  // 학부모 화면에서는 자기 아이만 표시
+  const filteredStudents = studentName
+    ? students.filter(
+        (student) => student.name === studentName
+      )
+    : students;
+
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "students"), (snapshot) => {
       const items = snapshot.docs.map((docItem) => ({
@@ -209,7 +223,9 @@ export default function PickupBoardApp() {
               </div>
 
               <h1 className="text-3xl md:text-5xl font-extrabold text-yellow-400 tracking-widest">
-                학원 하원 전광판
+                {isParentMode
+                  ? `${studentName} 학생 하원 현황`
+                  : "학원 하원 전광판"}
               </h1>
             </div>
 
@@ -225,6 +241,7 @@ export default function PickupBoardApp() {
             </p>
           </div>
 
+          {!isParentMode && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
             <input
               type="text"
@@ -263,6 +280,9 @@ export default function PickupBoardApp() {
             </div>
           </div>
 
+          </div>
+          )}
+
           <div className="overflow-hidden rounded-[28px] border border-zinc-700 shadow-2xl bg-black/40 overflow-x-auto">
             <table className="w-full text-center min-w-[700px]">
               <thead className="bg-gradient-to-r from-zinc-800 to-zinc-900 text-yellow-400">
@@ -270,12 +290,14 @@ export default function PickupBoardApp() {
                   <th className="py-5 text-xl">학생 이름</th>
                   <th className="py-5 text-xl">등원 시간</th>
                   <th className="py-5 text-xl">하원 시간</th>
+                  {!isParentMode && (
                   <th className="py-5 text-xl">관리</th>
+                )}
                 </tr>
               </thead>
 
               <tbody>
-                {students.length === 0 ? (
+                {filteredStudents.length === 0 ? (
                   <tr>
                     <td
                       colSpan="4"
@@ -285,7 +307,7 @@ export default function PickupBoardApp() {
                     </td>
                   </tr>
                 ) : (
-                  students.map((student) => (
+                  filteredStudents.map((student) => (
                     <tr
                       key={student.id}
                       className="border-t border-zinc-800 bg-black/70 hover:bg-zinc-900 transition-all duration-300"
@@ -302,14 +324,16 @@ export default function PickupBoardApp() {
                         {student.leaveTime}
                       </td>
 
-                      <td className="py-6">
-                        <button
-                          onClick={() => removeStudent(student.id)}
-                          className="bg-red-500 hover:bg-red-400 text-white px-4 py-2 rounded-xl font-semibold transition-all"
-                        >
-                          🗑 삭제
-                        </button>
-                      </td>
+                      {!isParentMode && (
+                        <td className="py-6">
+                          <button
+                            onClick={() => removeStudent(student.id)}
+                            className="bg-red-500 hover:bg-red-400 text-white px-4 py-2 rounded-xl font-semibold transition-all"
+                          >
+                            🗑 삭제
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -317,6 +341,7 @@ export default function PickupBoardApp() {
             </table>
           </div>
 
+          {!isParentMode && (
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="bg-zinc-800/70 border border-zinc-700 rounded-2xl p-4 text-center">
               <div className="text-zinc-500 text-sm">등록 학생</div>
@@ -335,6 +360,21 @@ export default function PickupBoardApp() {
               <div className="text-2xl font-bold text-yellow-400">LIVE</div>
             </div>
           </div>
+
+          </div>
+          )}
+
+          {isParentMode && (
+            <div className="mt-8 bg-green-500/10 border border-green-500/30 rounded-3xl p-6 text-center">
+              <div className="text-green-400 text-xl font-bold mb-2">
+                실시간 학부모 조회 모드
+              </div>
+
+              <div className="text-zinc-300 text-lg">
+                학생 상태가 실시간으로 자동 업데이트 됩니다.
+              </div>
+            </div>
+          )}
 
           <div className="mt-6 text-center text-zinc-500 text-sm">
             Firebase 실시간 공유 학원 하원 관리 시스템 · 푸쉬 알림 지원
