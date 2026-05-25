@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from "react";
-import { QRCodeCanvas } from "qrcode.react";
-import { initializeApp } from "firebase/app";
+import React, { useEffect, useMemo, useState } from 'react';
+import { initializeApp } from 'firebase/app';
 import {
   getFirestore,
   collection,
   addDoc,
-  onSnapshot,
   deleteDoc,
   doc,
+  onSnapshot,
   updateDoc,
-} from "firebase/firestore";
+} from 'firebase/firestore';
+import { QRCodeCanvas } from 'qrcode.react';
 
 // Firebase 설정
 const firebaseConfig = {
@@ -18,56 +18,82 @@ const firebaseConfig = {
   projectId: "academy-board-37bb9",
   storageBucket: "academy-board-37bb9.firebasestorage.app",
   messagingSenderId: "425499433220",
-  appId: "1:425499433220:web:814cf986e6368257f19851",
-  measurementId: "G-57D1ZG6BYK",
+  appId: "1:425499433220:web:82613d896ae8474af19851",
+  measurementId: "G-F9V36V74SN"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-export default function PickupBoardApp() {
-  const [name, setName] = useState("");
-  const [time, setTime] = useState("");
+const STATUS = {
+  STUDY: '수업중',
+  RIDING: '차량탑승',
+  COMPLETE: '귀가완료',
+};
+
+const add90Minutes = (time) => {
+  if (!time) return '';
+
+  const [hour, minute] = time.split(':').map(Number);
+  const date = new Date();
+
+  date.setHours(hour);
+  date.setMinutes(minute + 90);
+
+  return date.toLocaleTimeString('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+};
+
+export default function App() {
   const [students, setStudents] = useState([]);
-  const [currentTime, setCurrentTime] = useState("");
+  const [name, setName] = useState('');
+  const [enterTime, setEnterTime] = useState('');
+  const [currentTime, setCurrentTime] = useState('');
+
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editTime, setEditTime] = useState('');
+
+  // 현재 시간
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(
+        new Date().toLocaleTimeString('ko-KR', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      );
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   // URL 파라미터
   const params = new URLSearchParams(window.location.search);
-  const rawStudentId = params.get("id");
-
-  console.log("URL PARAM ID:", rawStudentId);
-
-  const studentId = rawStudentId
-    ? decodeURIComponent(rawStudentId).trim()
-    : null;
-
-  // 학부모 모드 여부
+  const studentId = params.get('id');
   const isParentMode = Boolean(studentId);
 
-  // 학생 필터링
-  const filteredStudents = studentId
-    ? students.filter((student) => {
-        const code = String(student.studentCode || "")
-          .trim()
-          .toLowerCase();
-
-        const targetId = String(studentId || "")
-          .trim()
-          .toLowerCase();
-
-        return code === targetId;
-      })
-    : students;
-
-  // 실시간 Firebase 동기화
+  // Firebase 실시간 동기화
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "students"), (snapshot) => {
-      const items = snapshot.docs.map((item) => ({
-        id: item.id,
-        ...item.data(),
+    const unsubscribe = onSnapshot(collection(db, 'students'), (snapshot) => {
+      const items = snapshot.docs.map((docItem) => ({
+        id: docItem.id,
+        ...docItem.data(),
       }));
 
-      items.sort((a, b) => b.createdAt - a.createdAt);
+      items.sort((a, b) => {
+        const aDone = a.status === STATUS.COMPLETE;
+        const bDone = b.status === STATUS.COMPLETE;
+
+        if (aDone && !bDone) return 1;
+        if (!aDone && bDone) return -1;
+
+        return b.createdAt - a.createdAt;
+      });
 
       setStudents(items);
     });
@@ -75,352 +101,319 @@ export default function PickupBoardApp() {
     return () => unsubscribe();
   }, []);
 
-  // 시계
-  useEffect(() => {
-    const updateClock = () => {
-      setCurrentTime(
-        new Date().toLocaleTimeString("ko-KR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        })
-      );
-    };
+  // 학부모 필터
+  const filteredStudents = useMemo(() => {
+    if (!studentId) return students;
 
-    updateClock();
-
-    const timer = setInterval(updateClock, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  // 하원 시간 계산
-  const calculateLeaveTime = (startTime) => {
-    if (!startTime || !startTime.includes(":")) {
-      return "--:--";
-    }
-
-    const [hours, minutes] = startTime.split(":").map(Number);
-
-    const date = new Date();
-
-    date.setHours(hours);
-    date.setMinutes(minutes + 90);
-
-    const hh = String(date.getHours()).padStart(2, "0");
-    const mm = String(date.getMinutes()).padStart(2, "0");
-
-    return `${hh}:${mm}`;
-  };
+    return students.filter(
+      (student) => student.studentCode === studentId
+    );
+  }, [students, studentId]);
 
   // 학생 추가
   const addStudent = async () => {
-    if (!name.trim() || !time) {
-      alert("학생 이름과 시간을 입력하세요.");
+    if (!name.trim() || !enterTime) {
+      alert('학생 이름과 시간을 입력하세요.');
       return;
     }
 
     try {
-      const studentCode = crypto.randomUUID();
-
-      await addDoc(collection(db, "students"), {
-        studentCode,
+      await addDoc(collection(db, 'students'), {
         name: name.trim(),
-        enterTime: time,
-        leaveTime: calculateLeaveTime(time),
-        status: "학원중",
+        enterTime,
+        leaveTime: add90Minutes(enterTime),
+        studentCode: crypto.randomUUID(),
+        status: STATUS.STUDY,
         createdAt: Date.now(),
       });
 
-      setName("");
-      setTime("");
+      setName('');
+      setEnterTime('');
     } catch (error) {
       console.error(error);
-      alert("학생 저장 실패");
-    }
-  };
-
-  // 학생 상태 변경
-  const updateStudentStatus = async (id, newStatus) => {
-    try {
-      const studentRef = doc(db, "students", id);
-
-      await updateDoc(studentRef, {
-        status: newStatus,
-      });
-    } catch (error) {
-      console.error(error);
-      alert("상태 변경 실패");
+      alert('학생 등록 실패');
     }
   };
 
   // 학생 삭제
   const removeStudent = async (id) => {
-    try {
-      await deleteDoc(doc(db, "students", id));
-    } catch (error) {
-      console.error(error);
-      alert("삭제 실패");
+    const ok = confirm('학생을 삭제할까요?');
+
+    if (!ok) return;
+
+    await deleteDoc(doc(db, 'students', id));
+  };
+
+  // 상태 변경
+  const updateStatus = async (id, status) => {
+    await updateDoc(doc(db, 'students', id), {
+      status,
+    });
+  };
+
+  // 수정 시작
+  const startEdit = (student) => {
+    setEditingId(student.id);
+    setEditName(student.name);
+    setEditTime(student.enterTime);
+  };
+
+  // 수정 저장
+  const saveEdit = async () => {
+    await updateDoc(doc(db, 'students', editingId), {
+      name: editName,
+      enterTime: editTime,
+      leaveTime: add90Minutes(editTime),
+    });
+
+    setEditingId(null);
+  };
+
+  // 하루 초기화
+  const resetAll = async () => {
+    const ok = confirm('오늘 데이터를 모두 삭제할까요?');
+
+    if (!ok) return;
+
+    for (const student of students) {
+      await deleteDoc(doc(db, 'students', student.id));
     }
+
+    alert('초기화 완료');
   };
 
   // 현황 복사
-  const copyStatusToClipboard = () => {
-    if (students.length === 0) {
-      alert("복사할 학생 정보가 없습니다.");
-      return;
-    }
-
-    const text = students
-      .map((student, index) => {
-        return `${index + 1}. ${student.name} | 등원 ${student.enterTime} | 하원 ${student.leaveTime}`;
-      })
-      .join("\n");
-
-    const finalText = `[학원 하원 현황]\n\n${text}`;
-
-    const textarea = document.createElement("textarea");
-
-    textarea.value = finalText;
-    textarea.style.position = "fixed";
-    textarea.style.left = "-9999px";
-
-    document.body.appendChild(textarea);
-
-    textarea.focus();
-    textarea.select();
+  const copyStatus = async () => {
+    const text = filteredStudents
+      .map(
+        (student) =>
+          `${student.name} | ${student.status} | 하원 ${student.leaveTime}`
+      )
+      .join('\n');
 
     try {
-      document.execCommand("copy");
-      alert("복사 되었습니다. 카톡에 붙여 넣기 하세요.");
-    } catch (error) {
-      console.error(error);
-      alert("복사 실패");
-    }
+      await navigator.clipboard.writeText(text);
+      alert('복사되었습니다. 카톡에 붙여넣기 하세요.');
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
 
-    document.body.removeChild(textarea);
+      alert('복사되었습니다. 카톡에 붙여넣기 하세요.');
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-black to-zinc-900 text-white p-4 md:p-6 flex justify-center">
-      <div className="w-full max-w-7xl">
-        <div className="bg-zinc-900/90 border border-zinc-700 rounded-[32px] p-4 md:p-6 shadow-2xl overflow-hidden">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <div className="text-zinc-500 text-sm tracking-[0.3em] uppercase mb-2">
-                Academy Smart Board
-              </div>
-
-              <h1 className="text-3xl md:text-5xl font-extrabold text-yellow-400 tracking-widest">
-                {isParentMode
-                  ? `학생 하원 현황`
-                  : "학원 하원 전광판"}
-              </h1>
-            </div>
-
-            <div className="hidden md:flex items-center gap-2 bg-zinc-800 border border-zinc-700 px-4 py-2 rounded-2xl">
-              <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
-              <span className="text-green-400 font-bold">LIVE</span>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-slate-200 p-4 md:p-8 text-slate-900">
+      <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 md:p-10">
+        <div className="text-center mb-10">
+          <div className="text-slate-500 font-semibold text-lg mb-3">
+            학생 등·하원 관리 시스템
           </div>
 
-          <div className="mb-4 text-center text-zinc-400 text-sm">
-            MODE : {isParentMode ? "PARENT" : "ADMIN"} |
-            FILTERED : {filteredStudents.length}
+          <h1 className="text-4xl md:text-6xl font-black text-blue-700 mb-4">
+            광교나무미술
+          </h1>
+
+          <div className="text-xl md:text-2xl font-bold text-slate-700">
+            {isParentMode ? '학생 하원 현황' : '실시간 학생 현황판'}
           </div>
 
-          {!isParentMode && (
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="학생 이름"
-                className="bg-zinc-800 border border-zinc-600 rounded-2xl px-4 py-4 text-lg focus:outline-none focus:border-yellow-400"
-              />
+          <div className="mt-4 text-slate-500 text-lg">
+            현재 시간 : {currentTime}
+          </div>
+        </div>
 
-              <input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="bg-zinc-800 border border-zinc-600 rounded-2xl px-4 py-4 text-lg focus:outline-none focus:border-yellow-400"
-              />
+        {!isParentMode && (
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="학생 이름"
+              className="bg-white border-2 border-slate-300 rounded-2xl px-4 py-4 text-lg font-semibold"
+            />
 
-              <button
-                onClick={addStudent}
-                className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-2xl px-4 py-4 text-lg"
-              >
-                ➕ 학생 추가
-              </button>
+            <input
+              type="time"
+              value={enterTime}
+              onChange={(e) => setEnterTime(e.target.value)}
+              className="bg-white border-2 border-slate-300 rounded-2xl px-4 py-4 text-lg font-semibold"
+            />
 
-              <button
-                onClick={copyStatusToClipboard}
-                className="bg-cyan-500 hover:bg-cyan-400 text-white font-bold rounded-2xl px-4 py-4 text-lg"
-              >
-                📋 현황 복사
-              </button>
+            <button
+              onClick={addStudent}
+              className="bg-blue-600 hover:bg-blue-500 text-white rounded-2xl px-4 py-4 font-bold text-lg"
+            >
+              ＋ 학생 추가
+            </button>
 
-              <div className="bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-4 text-center">
-                <div className="text-sm text-zinc-400 mb-1">현재 시간</div>
-                <div className="text-2xl font-bold text-green-400 font-mono">
-                  {currentTime}
-                </div>
-              </div>
-            </div>
-          )}
+            <button
+              onClick={copyStatus}
+              className="bg-cyan-500 hover:bg-cyan-400 text-white rounded-2xl px-4 py-4 font-bold text-lg"
+            >
+              📋 전체 현황 복사
+            </button>
 
-          <div className="overflow-x-auto rounded-[28px] border border-zinc-700 bg-black/40">
-            <table className="w-full min-w-[900px] text-center">
-              <thead className="bg-gradient-to-r from-zinc-800 to-zinc-900 text-yellow-400">
-                <tr>
-                  <th className="py-5 text-xl">학생 이름</th>
-                  <th className="py-5 text-xl">등원 시간</th>
-                  <th className="py-5 text-xl">하원 시간</th>
-                  <th className="py-5 text-xl">상태</th>
+            <button
+              onClick={resetAll}
+              className="bg-red-500 hover:bg-red-400 text-white rounded-2xl px-4 py-4 font-bold text-lg"
+            >
+              🧹 하루 초기화
+            </button>
+          </div>
+        )}
 
-                  {!isParentMode && (
-                    <th className="py-5 text-xl">학부모 QR</th>
-                  )}
-
-                  {!isParentMode && (
-                    <th className="py-5 text-xl">관리</th>
-                  )}
-                </tr>
-              </thead>
-
-              <tbody>
-                {filteredStudents.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={isParentMode ? 4 : 6}
-                      className="py-16 text-zinc-500 text-2xl"
-                    >
-                      등록된 학생이 없습니다.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredStudents.map((student) => {
-                    const qrUrl = `${window.location.origin}/?id=${student.studentCode}`;
-
-                    return (
-                      <tr
-                        key={student.id}
-                        className="border-t border-zinc-800 bg-black/70 hover:bg-zinc-900"
-                      >
-                        <td className="py-6 text-2xl md:text-3xl font-bold">
-                          {student.name}
-                        </td>
-
-                        <td className="py-6 text-xl md:text-2xl text-cyan-400 font-mono">
-                          {student.enterTime}
-                        </td>
-
-                        <td className="py-6 text-3xl md:text-5xl text-red-500 font-extrabold font-mono">
-                          {student.leaveTime}
-                        </td>
-
-                        <td className="py-6">
-                          <div className="flex flex-col items-center gap-2">
-                            <div
-                              className={`px-4 py-2 rounded-2xl font-bold text-white text-sm md:text-base ${
-                                student.status === "학원중"
-                                  ? "bg-blue-500"
-                                  : student.status === "차량탑승"
-                                  ? "bg-yellow-500 text-black"
-                                  : "bg-green-600"
-                              }`}
-                            >
-                              {student.status || "학원중"}
-                            </div>
-
-                            {!isParentMode && (
-                              <div className="flex flex-wrap justify-center gap-2 mt-2">
-                                <button
-                                  onClick={() =>
-                                    updateStudentStatus(student.id, "학원중")
-                                  }
-                                  className="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded-lg text-xs font-bold"
-                                >
-                                  학원중
-                                </button>
-
-                                <button
-                                  onClick={() =>
-                                    updateStudentStatus(student.id, "차량탑승")
-                                  }
-                                  className="bg-yellow-500 hover:bg-yellow-400 text-black px-3 py-1 rounded-lg text-xs font-bold"
-                                >
-                                  차량탑승
-                                </button>
-
-                                <button
-                                  onClick={() =>
-                                    updateStudentStatus(student.id, "귀가완료")
-                                  }
-                                  className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded-lg text-xs font-bold"
-                                >
-                                  귀가완료
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-
-                        {!isParentMode && (
-                          <td className="py-6">
-                            <div className="flex flex-col items-center gap-2">
-                              <QRCodeCanvas
-                                value={qrUrl}
-                                size={90}
-                                bgColor="#ffffff"
-                                fgColor="#000000"
-                              />
-
-                              <a
-                                href={qrUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-cyan-400 text-xs break-all hover:text-cyan-300"
-                              >
-                                학부모 QR 링크
-                              </a>
-                            </div>
-                          </td>
-                        )}
-
-                        {!isParentMode && (
-                          <td className="py-6">
-                            <button
-                              onClick={() => removeStudent(student.id)}
-                              className="bg-red-500 hover:bg-red-400 text-white px-4 py-2 rounded-xl font-bold"
-                            >
-                              🗑 삭제
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    );
-                  })
+        <div className="overflow-x-auto rounded-3xl border border-slate-200">
+          <table className="w-full">
+            <thead className="bg-gradient-to-r from-blue-700 to-blue-900 text-white">
+              <tr>
+                <th className="py-5 text-lg">학생</th>
+                <th className="py-5 text-lg">등원</th>
+                <th className="py-5 text-lg">하원</th>
+                <th className="py-5 text-lg">상태</th>
+                {!isParentMode && (
+                  <>
+                    <th className="py-5 text-lg">QR</th>
+                    <th className="py-5 text-lg">관리</th>
+                  </>
                 )}
-              </tbody>
-            </table>
-          </div>
+              </tr>
+            </thead>
 
-          {isParentMode && (
-            <div className="mt-8 bg-green-500/10 border border-green-500/30 rounded-3xl p-6 text-center">
-              <div className="text-green-400 text-xl font-bold mb-2">
-                실시간 학부모 조회 모드
-              </div>
+            <tbody>
+              {filteredStudents.map((student) => {
+                const qrUrl = `${window.location.origin}/?id=${student.studentCode}`;
 
-              <div className="text-zinc-300 text-lg">
-                학생 상태가 실시간으로 자동 업데이트 됩니다.
-              </div>
-            </div>
-          )}
+                return (
+                  <tr
+                    key={student.id}
+                    className="border-b border-slate-200 bg-white hover:bg-slate-50"
+                  >
+                    <td className="py-6 px-4 text-center text-2xl font-bold">
+                      {editingId === student.id ? (
+                        <input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="bg-white border-2 border-slate-300 rounded-xl px-3 py-2 font-semibold w-40"
+                        />
+                      ) : (
+                        student.name
+                      )}
+                    </td>
 
-          <div className="mt-6 text-center text-zinc-500 text-sm">
-            Firebase 실시간 공유 학원 하원 관리 시스템
-          </div>
+                    <td className="py-6 px-4 text-center text-xl text-cyan-600 font-bold">
+                      {editingId === student.id ? (
+                        <input
+                          type="time"
+                          value={editTime}
+                          onChange={(e) => setEditTime(e.target.value)}
+                          className="bg-white border-2 border-slate-300 rounded-xl px-3 py-2 font-semibold"
+                        />
+                      ) : (
+                        student.enterTime
+                      )}
+                    </td>
+
+                    <td className="py-6 px-4 text-center text-2xl text-orange-500 font-black">
+                      {student.leaveTime}
+                    </td>
+
+                    <td className="py-6 px-4 text-center">
+                      <div
+                        className={`inline-block px-5 py-3 rounded-2xl font-bold text-white ${
+                          student.status === STATUS.STUDY
+                            ? 'bg-blue-600'
+                            : student.status === STATUS.RIDING
+                            ? 'bg-yellow-400 text-black'
+                            : 'bg-green-600'
+                        }`}
+                      >
+                        {student.status}
+                      </div>
+
+                      {!isParentMode && (
+                        <div className="flex flex-wrap justify-center gap-2 mt-3">
+                          <button
+                            onClick={() => updateStatus(student.id, STATUS.STUDY)}
+                            className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl text-sm font-bold"
+                          >
+                            수업중
+                          </button>
+
+                          <button
+                            onClick={() => updateStatus(student.id, STATUS.RIDING)}
+                            className="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-2 rounded-xl text-sm font-bold"
+                          >
+                            차량탑승
+                          </button>
+
+                          <button
+                            onClick={() => updateStatus(student.id, STATUS.COMPLETE)}
+                            className="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-xl text-sm font-bold"
+                          >
+                            귀가완료
+                          </button>
+                        </div>
+                      )}
+                    </td>
+
+                    {!isParentMode && (
+                      <td className="py-6 px-4 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <QRCodeCanvas value={qrUrl} size={90} />
+
+                          <a
+                            href={qrUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-600 text-sm break-all hover:underline"
+                          >
+                            학부모 링크
+                          </a>
+                        </div>
+                      </td>
+                    )}
+
+                    {!isParentMode && (
+                      <td className="py-6 px-4 text-center">
+                        <div className="flex flex-col gap-2 items-center">
+                          {editingId === student.id ? (
+                            <button
+                              onClick={saveEdit}
+                              className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-xl font-bold"
+                            >
+                              💾 저장
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => startEdit(student)}
+                              className="bg-cyan-500 hover:bg-cyan-400 text-white px-4 py-2 rounded-xl font-bold"
+                            >
+                              ✏ 수정
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => removeStudent(student.id)}
+                            className="bg-red-500 hover:bg-red-400 text-white px-4 py-2 rounded-xl font-bold"
+                          >
+                            🗑 삭제
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-10 text-center text-slate-500 text-sm">
+          © 2026 광교나무미술 · 학생 등·하원 관리 시스템
         </div>
       </div>
     </div>
