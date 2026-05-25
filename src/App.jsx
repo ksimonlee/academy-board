@@ -35,6 +35,8 @@ export default function PickupBoardApp() {
   const params = new URLSearchParams(window.location.search);
   const rawStudentId = params.get("id");
 
+  console.log("URL PARAM ID:", rawStudentId);
+
   const studentId = rawStudentId
     ? decodeURIComponent(rawStudentId).trim()
     : null;
@@ -45,11 +47,15 @@ export default function PickupBoardApp() {
   // 학생 필터링
   const filteredStudents = studentId
     ? students.filter((student) => {
-        return (
-          String(student.studentCode)
-            .trim()
-            .toLowerCase() === studentId.toLowerCase()
-        );
+        const code = String(student.studentCode || "")
+          .trim()
+          .toLowerCase();
+
+        const targetId = String(studentId || "")
+          .trim()
+          .toLowerCase();
+
+        return code === targetId;
       })
     : students;
 
@@ -219,7 +225,8 @@ export default function PickupBoardApp() {
           </div>
 
           <div className="mb-4 text-center text-zinc-400 text-sm">
-            MODE : {studentId || "ALL"} | FILTERED : {filteredStudents.length}
+            MODE : {isParentMode ? "PARENT" : "ADMIN"} |
+            FILTERED : {filteredStudents.length}
           </div>
 
           {!isParentMode && (
@@ -285,7 +292,7 @@ export default function PickupBoardApp() {
                 {filteredStudents.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={isParentMode ? 3 : 5}
+                      colSpan={isParentMode ? 4 : 6}
                       className="py-16 text-zinc-500 text-2xl"
                     >
                       등록된 학생이 없습니다.
@@ -293,9 +300,7 @@ export default function PickupBoardApp() {
                   </tr>
                 ) : (
                   filteredStudents.map((student) => {
-                    const qrUrl = `${window.location.origin}/?id=${encodeURIComponent(
-                      student.studentCode
-                    )}`;
+                    const qrUrl = `${window.location.origin}/?id=${student.studentCode}`;
 
                     return (
                       <tr
