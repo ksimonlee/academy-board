@@ -33,21 +33,22 @@ export default function PickupBoardApp() {
 
   // URL 파라미터
   const params = new URLSearchParams(window.location.search);
-  const rawStudentName = params.get("student");
+  const rawStudentId = params.get("id");
 
-  const studentName = rawStudentName
-    ? decodeURIComponent(rawStudentName).trim()
+  const studentId = rawStudentId
+    ? decodeURIComponent(rawStudentId).trim()
     : null;
 
   // 학부모 모드 여부
-  const isParentMode = Boolean(studentName);
+  const isParentMode = Boolean(studentId);
 
   // 학생 필터링
-  const filteredStudents = studentName
+  const filteredStudents = studentId
     ? students.filter((student) => {
         return (
-          String(student.name).trim().toLowerCase() ===
-          studentName.toLowerCase()
+          String(student.studentCode)
+            .trim()
+            .toLowerCase() === studentId.toLowerCase()
         );
       })
     : students;
@@ -114,7 +115,10 @@ export default function PickupBoardApp() {
     }
 
     try {
+      const studentCode = crypto.randomUUID();
+
       await addDoc(collection(db, "students"), {
+        studentCode,
         name: name.trim(),
         enterTime: time,
         leaveTime: calculateLeaveTime(time),
@@ -203,7 +207,7 @@ export default function PickupBoardApp() {
 
               <h1 className="text-3xl md:text-5xl font-extrabold text-yellow-400 tracking-widest">
                 {isParentMode
-                  ? `${studentName} 학생 하원 현황`
+                  ? `학생 하원 현황`
                   : "학원 하원 전광판"}
               </h1>
             </div>
@@ -215,7 +219,7 @@ export default function PickupBoardApp() {
           </div>
 
           <div className="mb-4 text-center text-zinc-400 text-sm">
-            MODE : {studentName || "ALL"} | FILTERED : {filteredStudents.length}
+            MODE : {studentId || "ALL"} | FILTERED : {filteredStudents.length}
           </div>
 
           {!isParentMode && (
@@ -289,8 +293,8 @@ export default function PickupBoardApp() {
                   </tr>
                 ) : (
                   filteredStudents.map((student) => {
-                    const qrUrl = `${window.location.origin}/?student=${encodeURIComponent(
-                      student.name
+                    const qrUrl = `${window.location.origin}/?id=${encodeURIComponent(
+                      student.studentCode
                     )}`;
 
                     return (
@@ -373,7 +377,7 @@ export default function PickupBoardApp() {
                                 rel="noreferrer"
                                 className="text-cyan-400 text-xs break-all hover:text-cyan-300"
                               >
-                                학부모 전용 링크
+                                학부모 QR 링크
                               </a>
                             </div>
                           </td>
