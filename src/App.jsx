@@ -182,6 +182,23 @@ export default function App() {
     alert('초기화 완료');
   };
 
+  // 학부모 링크 복사
+  const copyParentLink = async (url) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      alert('학부모 링크가 복사되었습니다. 카톡으로 공유하세요.');
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = url;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+
+      alert('학부모 링크가 복사되었습니다. 카톡으로 공유하세요.');
+    }
+  };
+
   // 현황 복사
   const copyStatus = async () => {
     const text = filteredStudents
@@ -211,7 +228,7 @@ export default function App() {
       <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 md:p-10">
         <div className="text-center mb-10">
           <div className="text-slate-500 font-semibold text-lg mb-3">
-            학생 등·하원 관리 시스템
+            Smart Academy Attendance System
           </div>
 
           <h1 className="text-4xl md:text-6xl font-black text-blue-700 mb-4">
@@ -373,6 +390,13 @@ export default function App() {
                           >
                             학부모 링크
                           </a>
+
+                          <button
+                            onClick={() => copyParentLink(qrUrl)}
+                            className="bg-indigo-500 hover:bg-indigo-400 text-white px-3 py-2 rounded-xl text-sm font-bold"
+                          >
+                            📋 링크 복사
+                          </button>
                         </div>
                       </td>
                     )}
