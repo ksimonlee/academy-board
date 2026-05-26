@@ -31,14 +31,14 @@ const STATUS = {
   COMPLETE: '귀가완료',
 };
 
-const add90Minutes = (time) => {
+const calculateLeaveTime = (time, duration = 90) => {
   if (!time) return '';
 
   const [hour, minute] = time.split(':').map(Number);
   const date = new Date();
 
   date.setHours(hour);
-  date.setMinutes(minute + 90);
+  date.setMinutes(minute + Number(duration));
 
   return date.toLocaleTimeString('ko-KR', {
     hour: '2-digit',
@@ -51,11 +51,15 @@ export default function App() {
   const [students, setStudents] = useState([]);
   const [name, setName] = useState('');
   const [enterTime, setEnterTime] = useState('');
+  const [classDuration, setClassDuration] = useState(90);
+  const [leaveTime, setLeaveTime] = useState('');
   const [currentTime, setCurrentTime] = useState('');
 
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
   const [editTime, setEditTime] = useState('');
+  const [studentClassDuration, setStudentClassDuration] = useState(90);
+  const [studentCustomLeaveTime, setStudentCustomLeaveTime] = useState('');
 
   // 현재 시간
   useEffect(() => {
@@ -110,6 +114,13 @@ export default function App() {
     );
   }, [students, studentId]);
 
+  // 등원시간 또는 수업시간 변경 시 자동 계산
+  useEffect(() => {
+    if (enterTime) {
+      setLeaveTime(calculateLeaveTime(enterTime, classDuration));
+    }
+  }, [enterTime, classDuration]);
+
   // 학생 추가
   const addStudent = async () => {
     if (!name.trim() || !enterTime) {
@@ -121,7 +132,8 @@ export default function App() {
       await addDoc(collection(db, 'students'), {
         name: name.trim(),
         enterTime,
-        leaveTime: add90Minutes(enterTime),
+        leaveTime,
+        classDuration: Number(classDuration),
         studentCode: crypto.randomUUID(),
         status: STATUS.STUDY,
         createdAt: Date.now(),
@@ -129,6 +141,8 @@ export default function App() {
 
       setName('');
       setEnterTime('');
+      setClassDuration(90);
+      setLeaveTime('');
     } catch (error) {
       console.error(error);
       alert('학생 등록 실패');
@@ -156,6 +170,8 @@ export default function App() {
     setEditingId(student.id);
     setEditName(student.name);
     setEditTime(student.enterTime);
+    setStudentClassDuration(student.classDuration || 90);
+    setStudentCustomLeaveTime(student.leaveTime || '');
   };
 
   // 수정 저장
@@ -163,7 +179,8 @@ export default function App() {
     await updateDoc(doc(db, 'students', editingId), {
       name: editName,
       enterTime: editTime,
-      leaveTime: add90Minutes(editTime),
+      leaveTime: studentCustomLeaveTime || calculateLeaveTime(editTime, studentClassDuration),
+      classDuration: Number(studentClassDuration),
     });
 
     setEditingId(null);
@@ -245,7 +262,7 @@ export default function App() {
         </div>
 
         {!isParentMode && (
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-8">
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -257,6 +274,23 @@ export default function App() {
               type="time"
               value={enterTime}
               onChange={(e) => setEnterTime(e.target.value)}
+              className="bg-white border-2 border-slate-300 rounded-2xl px-4 py-4 text-lg font-semibold"
+            />
+
+            <select
+              value={classDuration}
+              onChange={(e) => setClassDuration(e.target.value)}
+              className="bg-white border-2 border-slate-300 rounded-2xl px-4 py-4 text-lg font-semibold"
+            >
+              <option value={90}>일반반 90분</option>
+              <option value={180}>연강반 180분</option>
+              <option value={240}>입시반 240분</option>
+            </select>
+
+            <input
+              type="time"
+              value={leaveTime}
+              onChange={(e) => setLeaveTime(e.target.value)}
               className="bg-white border-2 border-slate-300 rounded-2xl px-4 py-4 text-lg font-semibold"
             />
 
@@ -289,6 +323,7 @@ export default function App() {
               <tr>
                 <th className="py-5 text-lg">학생</th>
                 <th className="py-5 text-lg">등원</th>
+                <th className="py-5 text-lg">수업</th>
                 <th className="py-5 text-lg">하원</th>
                 <th className="py-5 text-lg">상태</th>
                 {!isParentMode && (
@@ -332,6 +367,10 @@ export default function App() {
                       ) : (
                         student.enterTime
                       )}
+                    </td>
+
+                    <td className="py-6 px-4 text-center text-lg font-bold text-slate-600">
+                      {student.classDuration || 90}분
                     </td>
 
                     <td className="py-6 px-4 text-center text-2xl text-orange-500 font-black">
