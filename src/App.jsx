@@ -256,8 +256,42 @@ export default function App() {
             {isParentMode ? '학생 하원 현황' : '실시간 학생 현황판'}
           </div>
 
-          <div className="mt-4 text-slate-500 text-lg">
-            현재 시간 : {currentTime}
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl px-6 py-5 shadow-sm">
+              <div className="text-slate-500 text-sm font-semibold mb-2">
+                📅 오늘 날짜
+              </div>
+              <div className="text-2xl md:text-3xl font-black text-blue-700">
+                {(() => {
+                  const now = new Date();
+                  const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+                  const year = now.getFullYear();
+                  const month = String(now.getMonth() + 1).padStart(2, '0');
+                  const day = String(now.getDate()).padStart(2, '0');
+                  const weekday = weekdays[now.getDay()];
+
+                  return `${year}/${month}/${day} (${weekday})`;
+                })()}
+              </div>
+            </div>
+
+            <div className="bg-cyan-50 border border-cyan-200 rounded-2xl px-6 py-5 shadow-sm">
+              <div className="text-slate-500 text-sm font-semibold mb-2">
+                👨‍🎓 등원 학생 수
+              </div>
+              <div className="text-2xl md:text-3xl font-black text-cyan-700">
+                {students.length}명
+              </div>
+            </div>
+
+            <div className="bg-orange-50 border border-orange-200 rounded-2xl px-6 py-5 shadow-sm">
+              <div className="text-slate-500 text-sm font-semibold mb-2">
+                ⏰ 현재 시간
+              </div>
+              <div className="text-2xl md:text-3xl font-black text-orange-600">
+                {currentTime}
+              </div>
+            </div>
           </div>
         </div>
 
