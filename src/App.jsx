@@ -256,7 +256,7 @@ export default function App() {
             {isParentMode ? '학생 하원 현황' : '실시간 학생 현황판'}
           </div>
 
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4 max-w-6xl mx-auto">
             <div className="bg-blue-50 border border-blue-200 rounded-2xl px-6 py-5 shadow-sm">
               <div className="text-slate-500 text-sm font-semibold mb-2">
                 📅 오늘 날짜
@@ -281,6 +281,19 @@ export default function App() {
               </div>
               <div className="text-2xl md:text-3xl font-black text-cyan-700">
                 {students.length}명
+              </div>
+            </div>
+
+            <div className="bg-green-50 border border-green-200 rounded-2xl px-6 py-5 shadow-sm">
+              <div className="text-slate-500 text-sm font-semibold mb-2">
+                🏫 수업중 학생 수
+              </div>
+              <div className="text-2xl md:text-3xl font-black text-green-700">
+                {
+                  students.filter(
+                    (student) => student.status === STATUS.STUDY
+                  ).length
+                }명
               </div>
             </div>
 
